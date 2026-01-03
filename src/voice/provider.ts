@@ -94,7 +94,7 @@ export class MockVoiceInputProvider implements VoiceInputProvider {
     this.listening = false;
   }
 
-  async transcribe(audioData: Buffer): Promise<VoiceTranscription> {
+  async transcribe(_audioData: Buffer): Promise<VoiceTranscription> {
     // Mock transcription
     return {
       text: 'Mock transcription of audio data',

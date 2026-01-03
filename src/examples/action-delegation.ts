@@ -8,7 +8,6 @@ import {
   AgentConfig,
   MockActionModule,
   Intent,
-  ActionResult,
 } from '../index';
 
 async function main(): Promise<void> {
@@ -66,8 +65,8 @@ async function main(): Promise<void> {
     intentId: 'test-intent-1',
     action: 'device.control',
     module: 'device',
-    scope: ['living room'],
-    reasoning: 'User wants to control living room lights',
+    scope: ['device', 'action'],
+    reasoning: 'User wants to control device',
   });
 
   console.log(`Permission request created: ${permRequest}`);
@@ -87,12 +86,16 @@ async function main(): Promise<void> {
   console.log('Example 3: Execute action with permission');
   const result2 = await agent.executeIntent(intent1);
   console.log(`Execution result: ${result2.success ? 'Success' : 'Failed'}`);
-  console.log(`Result: ${JSON.stringify(result2.result)}`);
+  if (result2.success) {
+    console.log(`Result: ${JSON.stringify(result2.result)}`);
+  } else {
+    console.log(`Error: ${result2.error}`);
+  }
   console.log('\n---\n');
 
   // Example 4: Check permissions
   console.log('Example 4: Check current permissions');
-  const isPermitted = permissionManager.isPermitted('device', 'device.control', ['living room']);
+  const isPermitted = permissionManager.isPermitted('device', 'device.control', ['device', 'action']);
   console.log(`Device control permitted: ${isPermitted}`);
 
   const devicePermissions = permissionManager.getPermissions('device');

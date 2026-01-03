@@ -1,4 +1,4 @@
-import { AgentConfig, AgentResponse, Intent, ActionResult, VoiceInput } from '../core/types';
+import { AgentConfig, AgentResponse, Intent, ActionResult } from '../core/types';
 import { LLMProvider } from '../llm/provider';
 import { VoiceInputProvider, VoiceOutputProvider } from '../voice/provider';
 import { ContextStore } from '../context/store';

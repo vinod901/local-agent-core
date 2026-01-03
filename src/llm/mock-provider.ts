@@ -25,7 +25,7 @@ export class MockLLMProvider extends BaseLLMProvider {
     this.responses.set('reminder', 'I will set a reminder for you.');
   }
 
-  async complete(prompt: string, options?: LLMOptions): Promise<LLMResponse> {
+  async complete(prompt: string, _options?: LLMOptions): Promise<LLMResponse> {
     const lowerPrompt = prompt.toLowerCase();
 
     let responseText = this.responses.get('default') || 'I understand.';
