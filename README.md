@@ -1,404 +1,278 @@
 # local-agent-core
 
-A privacy-first personal AI agent core designed to run locally with voice I/O, habit and context awareness, event summarization, and controlled action delegation.
+A privacy-first local AI agent with strict separation between cognitive functions (thinking) and execution (acting).
 
-## 🔒 Privacy-First Design
+## 🎯 What This Is
 
-This agent operates in a sandboxed environment and emits structured intents, while real-world actions—digital or physical—are executed by explicit, permissioned modules or device agents. All data stays local unless explicitly permitted otherwise.
+A **local-first personal AI agent** that:
 
-## 🌟 Features
+- 🎤 Listens and speaks naturally (voice-first)
+- 🧠 Understands routines, habits, preferences, and context
+- 💾 Maintains long-term personal knowledge and continuity
+- 🌍 Observes relevant world events selectively
+- 🔄 Reasons locally using interchangeable LLMs
+- 🔒 **Does NOT act directly** - delegates actions safely
+- 🤖 Can later control physical systems (robotics) without changing its core
 
-- **Local Execution**: Runs entirely on your device - your data never leaves without permission
-- **Voice I/O**: Abstracted voice input (speech-to-text) and output (text-to-speech) interfaces
-- **Context Awareness**: Tracks user habits, routines, and events for personalized assistance
-- **Event Summarization**: Automatically summarizes recent interactions and context
-- **Replaceable LLMs**: Abstract LLM interface works with any provider (OpenAI, Anthropic, local models, etc.)
-- **Sandboxed Execution**: All actions run in isolated, controlled environments
-- **Permission System**: Explicit, scoped permissions required for all real-world actions
-- **Module Architecture**: Extensible system for digital and physical action delegation
+**This is NOT:**
+- A chatbot
+- A cloud assistant
+- Autonomous AI
 
-## 📦 Installation
-
-```bash
-npm install local-agent-core
-```
-
-## 🚀 Quick Start
-
-```typescript
-import { Agent, MockLLMProvider, AgentConfig } from 'local-agent-core';
-
-// Configure the agent
-const config: AgentConfig = {
-  userId: 'your-user-id',
-  llmProvider: 'mock', // or your preferred provider
-  voiceEnabled: true,
-  privacyMode: 'strict',
-  dataRetentionDays: 30,
-  allowedModules: ['time', 'weather', 'reminder'],
-};
-
-// Create an LLM provider (mock for demo, replace with real provider)
-const llmProvider = new MockLLMProvider();
-
-// Initialize the agent
-const agent = new Agent(config, llmProvider);
-
-// Process text input
-const response = await agent.processText('Hello! What time is it?');
-console.log(response.text);
-console.log('Intents detected:', response.intents);
-```
-
-## 📖 Core Concepts
-
-### Agent
-The main orchestrator that coordinates all components:
-- Processes user input (text or voice)
-- Manages conversation context
-- Parses intents from user requests
-- Enforces permissions for actions
-
-### LLM Provider
-Abstract interface for language models:
-- Replaceable - works with any LLM
-- Supports streaming and standard completion
-- Includes mock provider for testing
-
-### Context Store
-Privacy-first local storage:
-- Tracks user habits and routines
-- Records events for context awareness
-- Summarizes recent interactions
-- Respects data retention policies
-
-### Permission Manager
-Security layer for action delegation:
-- Explicit permission requests
-- Scoped permissions
-- Time-based expiration
-- Easy revocation
-
-### Module Registry
-Extensible action system:
-- Register custom action modules
-- Sandboxed execution
-- Clear capability declarations
-- Module discovery and management
-
-## 💡 Examples
-
-### Basic Usage
-
-```typescript
-import { Agent, MockLLMProvider, AgentConfig } from 'local-agent-core';
-
-const config: AgentConfig = {
-  userId: 'demo-user',
-  llmProvider: 'mock',
-  voiceEnabled: false,
-  privacyMode: 'strict',
-  dataRetentionDays: 30,
-  allowedModules: ['time', 'weather'],
-};
-
-const agent = new Agent(config, new MockLLMProvider());
-
-// Simple interaction
-const response = await agent.processText('Hello!');
-console.log(response.text);
-```
-
-### Context Awareness
-
-```typescript
-// Add context
-const contextStore = agent.getContextStore();
-contextStore.setLocation('home');
-contextStore.setActivity('working');
-
-// Add a habit
-contextStore.addHabit({
-  name: 'Morning exercise',
-  frequency: 'daily',
-  schedule: '07:00',
-});
-
-// Agent uses this context in responses
-const response = await agent.processText('Should I take a break?');
-```
-
-### Action Delegation with Permissions
-
-```typescript
-import { MockActionModule } from 'local-agent-core';
-
-// Register an action module
-const deviceModule = new MockActionModule('device', [
-  'device.control',
-  'device.query'
-]);
-agent.getModuleRegistry().register(deviceModule);
-
-// Create an intent
-const intent = {
-  type: 'device.control',
-  confidence: 0.9,
-  parameters: { device: 'light', action: 'on' },
-  requiresPermission: true,
-  targetModule: 'device',
-  timestamp: new Date(),
-};
-
-// Request permission
-const permManager = agent.getPermissionManager();
-const requestId = permManager.requestPermission({
-  intentId: 'intent-1',
-  action: 'device.control',
-  module: 'device',
-  scope: ['living room'],
-  reasoning: 'User wants to control lights',
-});
-
-// Grant permission (expires in 1 hour)
-permManager.grantPermission(requestId, { expiresIn: 3600000 });
-
-// Execute action (now permitted)
-const result = await agent.executeIntent(intent);
-console.log('Action result:', result);
-```
-
-### Custom LLM Provider
-
-```typescript
-import { BaseLLMProvider, LLMOptions, LLMResponse } from 'local-agent-core';
-
-class MyLLMProvider extends BaseLLMProvider {
-  constructor() {
-    super('my-custom-llm');
-  }
-
-  async complete(prompt: string, options?: LLMOptions): Promise<LLMResponse> {
-    // Implement your LLM integration here
-    // This could call OpenAI, Anthropic, a local model, etc.
-    const response = await myLLMAPI.generate(prompt, options);
-    
-    return {
-      text: response.text,
-      usage: {
-        promptTokens: response.promptTokens,
-        completionTokens: response.completionTokens,
-        totalTokens: response.totalTokens,
-      },
-      finishReason: 'stop',
-    };
-  }
-}
-
-// Use your custom provider
-const agent = new Agent(config, new MyLLMProvider());
-```
-
-### Custom Action Module
-
-```typescript
-import { ActionModule, Intent, ActionResult, ModuleCapabilities } from 'local-agent-core';
-
-class SmartHomeModule implements ActionModule {
-  getName(): string {
-    return 'smarthome';
-  }
-
-  getSupportedActions(): string[] {
-    return ['smarthome.light.on', 'smarthome.light.off', 'smarthome.thermostat.set'];
-  }
-
-  async execute(intent: Intent): Promise<ActionResult> {
-    // Implement your action logic here
-    // This could control real IoT devices
-    
-    return {
-      success: true,
-      intentId: intent.timestamp.toISOString(),
-      module: this.getName(),
-      action: intent.type,
-      result: { status: 'executed' },
-      timestamp: new Date(),
-    };
-  }
-
-  async isAvailable(): Promise<boolean> {
-    // Check if hardware/services are available
-    return true;
-  }
-
-  getCapabilities(): ModuleCapabilities {
-    return {
-      name: this.getName(),
-      description: 'Smart home device control',
-      actions: [
-        {
-          name: 'smarthome.light.on',
-          description: 'Turn on a light',
-          parameters: [
-            { name: 'device', type: 'string', required: true, description: 'Device name' }
-          ],
-          riskLevel: 'low',
-        },
-      ],
-    };
-  }
-}
-
-// Register your module
-agent.getModuleRegistry().register(new SmartHomeModule());
-```
+**This IS:**
+- A cognitive delegate with strict safety boundaries
+- Local-first, privacy-first
+- Thinking and acting are strictly separated
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         User Input                          │
-│                    (Text/Voice/Events)                      │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                        Agent Core                           │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              LLM Provider (Replaceable)              │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              Context Store (Local)                   │  │
-│  │  • User habits    • Events    • Current context      │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              Intent Parser                           │  │
-│  │  Extracts structured intents from responses          │  │
-│  └──────────────────────────────────────────────────────┘  │
-└────────────────────────┬────────────────────────────────────┘
-                         │ Structured Intents
-┌────────────────────────▼────────────────────────────────────┐
-│                  Permission Manager                         │
-│           (Explicit, Scoped, Time-limited)                  │
-└────────────────────────┬────────────────────────────────────┘
-                         │ Authorized Actions
-┌────────────────────────▼────────────────────────────────────┐
-│                   Module Registry                           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-│  │  Device  │  │ Message  │  │   File   │  │  Custom  │  │
-│  │  Module  │  │  Module  │  │  Module  │  │  Module  │  │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         ▼
+Audio Input → Wake Word → STT (whisper.cpp)
+                           ↓
+        ┌──────────────────────────────────┐
+        │    Agent Core (Rust)              │
+        │  • Memory (SQLite)                │
+        │  • Habit modeling                 │
+        │  • Planner                        │
+        │  • Policy engine                  │
+        │  • Intent generator               │
+        └──────────────────────────────────┘
+                           ↓ Structured Intent (JSON)
+        ┌──────────────────────────────────┐
+        │   Intent Gateway (Go)             │
+        │   Secure Boundary                 │
+        └──────────────────────────────────┘
+                           ↓
+        ┌──────────────────────────────────┐
+        │   Device Agents (Go)              │
+        │  • Device control                 │
+        │  • OS integration                 │
+        │  • Robot control (future)         │
+        └──────────────────────────────────┘
+                           ↓
               Real-world Actions
-        (Digital/Physical, Sandboxed)
 ```
 
-## 🔐 Security & Privacy
+**Key Invariant:** Agent emits intent, never executes actions.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
+
+## 🔑 Core Principles (Non-Negotiable)
+
+### 1. Purpose First (Prayojana-anivāryatā)
+Accessibility, continuity, and trust — not novelty or automation hype.
+
+### 2. Separation of Thinking and Acting
+```
+Thinking → Intent → Permissioned Execution
+```
+Never direct action.
+
+### 3. Local-First & Privacy-First
+All cognition runs locally. No data exhaust. No training on user data.
+
+### 4. Agent ≠ Robot
+The agent is cognitive. Robots are optional executors added later.
+
+### 5. Bounded Agency
+The agent prepares, suggests, summarizes — the human authorizes.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Rust 1.70+ (`cargo`)
+- Go 1.21+ (`go`)
+- Docker & docker-compose (optional)
+
+### Build Rust Agent Core
+
+```bash
+cd rust-agent-core
+cargo build --release
+cargo test
+```
+
+### Build Go Device Agent
+
+```bash
+cd go-device-agent
+go build ./...
+go test ./...
+```
+
+### Run Device Agent Demo
+
+```bash
+cd go-device-agent
+go run cmd/agent/main.go
+```
+
+### Using Docker Compose
+
+```bash
+docker-compose up --build
+```
+
+## 📚 Components
+
+### Rust Agent Core (`rust-agent-core/`)
+
+The **cognitive engine** implemented in Rust for:
+- Memory safety and determinism
+- Future robotics compatibility
+- High performance
+
+**Modules:**
+- `memory` - SQLite-based persistent storage
+- `habit` - Statistical habit/routine modeling
+- `planner` - Context-aware reasoning
+- `policy` - Permission enforcement
+- `intent` - Intent generation (outputs JSON)
+- `llm` - LLM abstraction layer
+- `voice` - Voice I/O interfaces
+
+### Go Device Agents (`go-device-agent/`)
+
+The **execution layer** implemented in Go for:
+- Simple, auditable code
+- OS integration
+- Easy replacement/extension
+
+**Packages:**
+- `intent` - Intent structure definitions
+- `gateway` - Secure intent gateway
+- `executor` - Action executors
+- `cmd/agent` - Main device agent
+
+### TypeScript Reference (`src/`)
+
+Legacy TypeScript implementation kept for reference. The production system uses Rust + Go.
+
+## 💡 Usage Example
+
+### Agent Core (Rust) - Emits Intent
+
+```rust
+use rust_agent_core::intent::IntentGenerator;
+use std::collections::HashMap;
+
+let generator = IntentGenerator::new();
+let mut params = HashMap::new();
+params.insert("device".to_string(), serde_json::json!("light"));
+params.insert("action".to_string(), serde_json::json!("on"));
+
+let intent = generator.generate(
+    "device.control".to_string(),
+    0.9,
+    params,
+    "User wants to turn on lights".to_string(),
+)?;
+
+// Serialize to JSON for device agent
+let json = generator.to_json(&intent)?;
+// Send to device agent via gateway
+```
+
+### Device Agent (Go) - Executes Intent
+
+```go
+import (
+    "context"
+    "github.com/vinod901/local-agent-core/go-device-agent/pkg/gateway"
+    "github.com/vinod901/local-agent-core/go-device-agent/pkg/executor"
+)
+
+// Create gateway
+gw := gateway.NewGateway(logger)
+
+// Register executors
+gw.RegisterExecutor(executor.NewDeviceExecutor())
+
+// Process intent from agent core
+result, err := gw.ProcessIntent(ctx, intentJSON)
+```
+
+## 🛡️ Security & Privacy
 
 1. **Local-First**: All data processing happens on your device
 2. **No Tracking**: No telemetry, analytics, or data collection
 3. **Explicit Permissions**: Every action requires user approval
 4. **Scoped Access**: Permissions are limited in scope and time
-5. **Sandboxed Modules**: Actions run in isolated environments
-6. **Data Retention**: Configurable data retention policies
-7. **Clear Logs**: All actions are logged for transparency
+5. **Sandboxed Execution**: Actions run in isolated environments
+6. **Clear Logs**: All actions are logged for transparency
+7. **Separation of Concerns**: Agent thinks, device agents act
 
 ## 🧪 Testing
 
-Run the test suite:
+### Rust Tests
+```bash
+cd rust-agent-core
+cargo test
+```
 
+### Go Tests
+```bash
+cd go-device-agent
+go test ./...
+```
+
+### TypeScript Tests (Legacy)
 ```bash
 npm test
 ```
 
-Run with coverage:
+## 🗺️ Roadmap
 
-```bash
-npm test -- --coverage
-```
+- [x] Rust agent core foundation
+- [x] Go device agent framework
+- [x] Memory layer (SQLite)
+- [x] Habit modeling
+- [x] Intent generation
+- [x] Policy engine
+- [ ] Wake word detection (OpenWakeWord/Porcupine)
+- [ ] Speech-to-text (whisper.cpp integration)
+- [ ] Text-to-speech (Piper TTS integration)
+- [ ] Local LLM integration (llama.cpp)
+- [ ] HTTP API for agent ↔ device communication
+- [ ] Robot control executor (with safety)
 
-## 🛠️ Development
+## 🎯 Technology Choices (Locked)
 
-Build the project:
+### Language Split
+- **Rust**: Agent core (cognition, memory, planning, policy, voice I/O)
+  - Memory safety, determinism, future robotics
+- **Go**: Device agents (OS integration, networking, UI, observability)
+  - Simple, auditable, replaceable executors
 
-```bash
-npm run build
-```
+### Assembled Components (No Reinvention)
+- Speech → Text: whisper.cpp
+- Text → Speech: Piper TTS
+- Wake word: OpenWakeWord / Porcupine
+- LLMs: local (llama.cpp family) or cloud — behind abstraction
+- Memory: SQLite (SQL-first, auditable, deterministic)
+- Dev & simulation: Docker + docker-compose
 
-Run the examples:
-
-```bash
-npm run dev
-```
-
-Lint the code:
-
-```bash
-npm run lint
-```
-
-Format the code:
-
-```bash
-npm run format
-```
-
-## 📝 API Documentation
-
-### Agent
-
-Main agent class for orchestrating all components.
-
-**Methods:**
-- `processText(input: string): Promise<AgentResponse>` - Process text input
-- `processVoice(audioData: Buffer): Promise<AgentResponse>` - Process voice input
-- `executeIntent(intent: Intent): Promise<ActionResult>` - Execute an intent
-- `getModuleRegistry(): ModuleRegistry` - Access the module registry
-- `getPermissionManager(): PermissionManager` - Access the permission manager
-- `getContextStore(): ContextStore` - Access the context store
-- `clearHistory(): void` - Clear conversation history
-
-### ContextStore
-
-Manages user context, habits, and events locally.
-
-**Methods:**
-- `addEvent(event): ContextEvent` - Add a context event
-- `getRecentEvents(limit?): ContextEvent[]` - Get recent events
-- `addHabit(habit): Habit` - Add or update a habit
-- `completeHabit(habitId): void` - Mark habit as completed
-- `getContext(): Context` - Get current context
-- `clear(): void` - Clear all context data
-
-### PermissionManager
-
-Manages permissions for action delegation.
-
-**Methods:**
-- `requestPermission(request): string` - Request a permission
-- `grantPermission(requestId, options?): Permission | null` - Grant a permission
-- `isPermitted(module, action, scope?): boolean` - Check if action is permitted
-- `revokeModule(module): void` - Revoke all permissions for a module
-
-### ModuleRegistry
-
-Manages action modules.
-
-**Methods:**
-- `register(module): void` - Register an action module
-- `getModule(name): ActionModule | undefined` - Get a module by name
-- `getAllModules(): ActionModule[]` - Get all registered modules
+**No vectors or embeddings by default.** Those can be layered later.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Key guidelines:**
+- Respect the architecture boundaries
+- Agent core in Rust, device agents in Go
+- No direct action execution in agent core
+- All actions through intent → gateway → executor
+- Privacy-first, local-first always
 
 ## 📄 License
 
-MIT
+MIT - See [LICENSE](LICENSE)
 
 ## 🙏 Acknowledgments
 
-This project is designed with privacy and security as first principles, inspired by the need for AI agents that respect user autonomy and data sovereignty.
+This project is built on the principle that AI agents should respect user autonomy and data sovereignty. The strict separation between thinking and acting ensures safety while enabling powerful assistance.
+
+---
+
+**Remember:** The value is in composition + boundaries, not raw ML.
