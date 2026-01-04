@@ -14,6 +14,14 @@ build/
 # Exclude src directory from ignore
 !src/**/*.js
 
+# Rust build artifacts
+rust-agent-core/target/
+rust-agent-core/Cargo.lock
+
+# Go build artifacts
+go-device-agent/device-agent
+go-device-agent/go.sum
+
 # Test coverage
 coverage/
 .nyc_output/
@@ -48,3 +56,6 @@ data/
 user-context/
 habits/
 events/
+*.db
+*.sqlite
+

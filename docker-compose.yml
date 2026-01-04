@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Rust Agent Core - The cognitive engine
+  agent-core:
+    build:
+      context: ./rust-agent-core
+      dockerfile: Dockerfile
+    container_name: local-agent-core
+    volumes:
+      - agent-data:/data
+    environment:
+      - RUST_LOG=info
+      - DATABASE_PATH=/data/agent.db
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+  # Go Device Agent - The execution layer
+  device-agent:
+    build:
+      context: ./go-device-agent
+      dockerfile: Dockerfile
+    container_name: device-agent
+    depends_on:
+      - agent-core
+    environment:
+      - AGENT_CORE_URL=http://agent-core:8080
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+volumes:
+  agent-data:
+    driver: local
+
+networks:
+  agent-network:
+    driver: bridge
