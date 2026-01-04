@@ -79,6 +79,8 @@ The agent prepares, suggests, summarizes — the human authorizes.
 
 ## 🚀 Quick Start
 
+**New to this project?** Check out the [Getting Started Guide](GETTING_STARTED.md) for a comprehensive walkthrough!
+
 ### Prerequisites
 - Rust 1.70+ (`cargo`)
 - Go 1.21+ (`go`)
