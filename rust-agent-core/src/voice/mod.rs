@@ -137,7 +137,6 @@ impl TextToSpeech for MockTextToSpeech {
 pub struct SimpleWakeWordDetector {
     wake_words: Vec<String>,
     threshold: f32,
-    detected: bool,
 }
 
 impl SimpleWakeWordDetector {
@@ -147,7 +146,6 @@ impl SimpleWakeWordDetector {
         Self {
             wake_words,
             threshold,
-            detected: false,
         }
     }
 

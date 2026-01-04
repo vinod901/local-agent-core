@@ -88,7 +88,7 @@ fn main() -> Result<()> {
     println!("         For production, use OpenWakeWord or Porcupine.");
 
     // 4. LLM interaction
-    println!("\n3. Processing user input with LLM...");
+    println!("\n4. Processing user input with LLM...");
     
     // Try Ollama first, fall back to Mock if not available
     let llm: Box<dyn LlmProvider> = {

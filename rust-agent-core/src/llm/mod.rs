@@ -110,7 +110,6 @@ struct OllamaRequest {
     model: String,
     prompt: String,
     stream: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
     options: Option<OllamaOptions>,
 }
 
