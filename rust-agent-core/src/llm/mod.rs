@@ -5,6 +5,7 @@
 
 use crate::error::{AgentError, Result};
 use crate::types::{LlmOptions, LlmResponse, LlmUsage};
+use serde::{Deserialize, Serialize};
 
 /// Trait for LLM providers
 pub trait LlmProvider: Send + Sync {
@@ -103,6 +104,130 @@ impl LlmProvider for LocalLlmProvider {
     }
 }
 
+/// Ollama API request structure
+#[derive(Debug, Serialize)]
+struct OllamaRequest {
+    model: String,
+    prompt: String,
+    stream: bool,
+    options: Option<OllamaOptions>,
+}
+
+/// Ollama API options
+#[derive(Debug, Serialize)]
+struct OllamaOptions {
+    temperature: f32,
+    #[serde(rename = "num_predict")]
+    max_tokens: i32,
+    top_p: f32,
+}
+
+/// Ollama API response
+#[derive(Debug, Deserialize)]
+struct OllamaResponse {
+    #[serde(default)]
+    response: String,
+    #[serde(default)]
+    done: bool,
+    #[serde(default)]
+    prompt_eval_count: Option<u32>,
+    #[serde(default)]
+    eval_count: Option<u32>,
+}
+
+/// Ollama LLM provider - connects to local Ollama server
+/// Ollama is easy to run locally and supports many models
+pub struct OllamaProvider {
+    name: String,
+    base_url: String,
+    model: String,
+}
+
+impl OllamaProvider {
+    /// Create a new Ollama provider
+    /// Default endpoint is http://localhost:11434
+    pub fn new(model: String) -> Self {
+        Self {
+            name: format!("ollama-{}", model),
+            base_url: "http://localhost:11434".to_string(),
+            model,
+        }
+    }
+
+    /// Create a new Ollama provider with custom endpoint
+    pub fn with_endpoint(model: String, base_url: String) -> Self {
+        Self {
+            name: format!("ollama-{}", model),
+            base_url,
+            model,
+        }
+    }
+}
+
+impl LlmProvider for OllamaProvider {
+    fn complete(&self, prompt: &str, options: &LlmOptions) -> Result<LlmResponse> {
+        let url = format!("{}/api/generate", self.base_url);
+        
+        let request = OllamaRequest {
+            model: self.model.clone(),
+            prompt: prompt.to_string(),
+            stream: false,
+            options: Some(OllamaOptions {
+                temperature: options.temperature,
+                max_tokens: options.max_tokens as i32,
+                top_p: options.top_p,
+            }),
+        };
+
+        let client = reqwest::blocking::Client::new();
+        let response = client
+            .post(&url)
+            .json(&request)
+            .send()
+            .map_err(|e| AgentError::Llm(format!("Failed to send request to Ollama: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(AgentError::Llm(format!(
+                "Ollama API returned error status: {}",
+                response.status()
+            )));
+        }
+
+        let ollama_response: OllamaResponse = response
+            .json()
+            .map_err(|e| AgentError::Llm(format!("Failed to parse Ollama response: {}", e)))?;
+
+        Ok(LlmResponse {
+            text: ollama_response.response,
+            finish_reason: if ollama_response.done {
+                "stop".to_string()
+            } else {
+                "length".to_string()
+            },
+            usage: LlmUsage {
+                prompt_tokens: ollama_response.prompt_eval_count.unwrap_or(0),
+                completion_tokens: ollama_response.eval_count.unwrap_or(0),
+                total_tokens: ollama_response.prompt_eval_count.unwrap_or(0)
+                    + ollama_response.eval_count.unwrap_or(0),
+            },
+        })
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn is_available(&self) -> bool {
+        // Try to connect to Ollama server
+        let url = format!("{}/api/tags", self.base_url);
+        reqwest::blocking::Client::new()
+            .get(&url)
+            .send()
+            .map(|r| r.status().is_success())
+            .unwrap_or(false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,5 +248,40 @@ mod tests {
 
         let response = provider.complete("What time is it?", &options).unwrap();
         assert!(response.text.contains("time") || response.text.contains("PM"));
+    }
+
+    #[test]
+    fn test_ollama_provider_creation() {
+        let provider = OllamaProvider::new("llama2".to_string());
+        assert_eq!(provider.name(), "ollama-llama2");
+    }
+
+    #[test]
+    fn test_ollama_provider_with_endpoint() {
+        let provider = OllamaProvider::with_endpoint(
+            "llama2".to_string(),
+            "http://localhost:11434".to_string(),
+        );
+        assert_eq!(provider.name(), "ollama-llama2");
+    }
+
+    // This test requires Ollama to be running
+    // Skip it if Ollama is not available
+    #[test]
+    #[ignore]
+    fn test_ollama_provider_complete() {
+        let provider = OllamaProvider::new("llama2".to_string());
+        
+        if !provider.is_available() {
+            println!("Ollama not available, skipping test");
+            return;
+        }
+
+        let options = LlmOptions::default();
+        let response = provider.complete("Say hello in one word", &options);
+        
+        assert!(response.is_ok());
+        let response = response.unwrap();
+        assert!(!response.text.is_empty());
     }
 }
