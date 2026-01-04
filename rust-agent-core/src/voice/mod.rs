@@ -131,6 +131,58 @@ impl TextToSpeech for MockTextToSpeech {
     }
 }
 
+/// Simple wake word detector using energy threshold
+/// This is a basic implementation that detects speech based on audio energy
+/// For production, use OpenWakeWord, Porcupine, or similar
+pub struct SimpleWakeWordDetector {
+    wake_words: Vec<String>,
+    threshold: f32,
+    detected: bool,
+}
+
+impl SimpleWakeWordDetector {
+    /// Create a new simple wake word detector
+    /// threshold: Energy threshold for detection (0.0 - 1.0)
+    pub fn new(wake_words: Vec<String>, threshold: f32) -> Self {
+        Self {
+            wake_words,
+            threshold,
+            detected: false,
+        }
+    }
+
+    /// Calculate RMS (Root Mean Square) energy of audio buffer
+    fn calculate_energy(&self, audio_data: &[f32]) -> f32 {
+        if audio_data.is_empty() {
+            return 0.0;
+        }
+        
+        let sum: f32 = audio_data.iter().map(|x| x * x).sum();
+        (sum / audio_data.len() as f32).sqrt()
+    }
+}
+
+impl Default for SimpleWakeWordDetector {
+    fn default() -> Self {
+        Self::new(vec!["hey agent".to_string()], 0.1)
+    }
+}
+
+impl WakeWordDetector for SimpleWakeWordDetector {
+    fn detect(&self, audio_data: &[f32]) -> Result<bool> {
+        // Simple energy-based detection
+        // In production, this would use actual wake word recognition
+        let energy = self.calculate_energy(audio_data);
+        
+        // Detect if energy exceeds threshold
+        Ok(energy > self.threshold)
+    }
+
+    fn wake_words(&self) -> Vec<String> {
+        self.wake_words.clone()
+    }
+}
+
 /// Whisper.cpp STT provider (placeholder for actual integration)
 pub struct WhisperSttProvider {
     model_path: String,
@@ -198,6 +250,27 @@ mod tests {
         let audio = vec![0.0f32; 1000];
         let result = detector.detect(&audio).unwrap();
         assert!(!result); // Mock always returns false
+    }
+
+    #[test]
+    fn test_simple_wake_word_low_energy() {
+        let detector = SimpleWakeWordDetector::default();
+        assert_eq!(detector.wake_words(), vec!["hey agent"]);
+        
+        // Low energy audio (silence)
+        let audio = vec![0.01f32; 1000];
+        let result = detector.detect(&audio).unwrap();
+        assert!(!result); // Should not detect with low energy
+    }
+
+    #[test]
+    fn test_simple_wake_word_high_energy() {
+        let detector = SimpleWakeWordDetector::default();
+        
+        // High energy audio (speech-like)
+        let audio = vec![0.5f32; 1000];
+        let result = detector.detect(&audio).unwrap();
+        assert!(result); // Should detect with high energy
     }
 
     #[test]

@@ -2,19 +2,22 @@
 //!
 //! This example shows:
 //! 1. Memory operations (storing events and habits)
-//! 2. Intent generation from user input
-//! 3. Policy enforcement
-//! 4. Context-aware planning
+//! 2. Wake word detection
+//! 3. LLM interaction (MockLLM and Ollama)
+//! 4. Intent generation from user input
+//! 5. Policy enforcement
+//! 6. Context-aware planning
 
 use rust_agent_core::{
     error::Result,
     habit::HabitAnalyzer,
     intent::IntentGenerator,
-    llm::{LlmProvider, MockLlmProvider},
+    llm::{LlmProvider, MockLlmProvider, OllamaProvider},
     memory::MemoryStore,
     planner::Planner,
     policy::{Permission, PolicyEngine},
     types::{Event, Habit, HabitFrequency, LlmOptions},
+    voice::{SimpleWakeWordDetector, WakeWordDetector},
 };
 use chrono::{Duration, Utc};
 use std::collections::HashMap;
@@ -67,16 +70,46 @@ fn main() -> Result<()> {
     println!("   Habit: {}", habit.name);
     println!("   Variance: {:?} (lower = more consistent)", variance);
 
-    // 3. LLM interaction
+    // 3. Wake word detection demo
+    println!("\n3. Testing wake word detection...");
+    let wake_word_detector = SimpleWakeWordDetector::default();
+    println!("   Wake words: {:?}", wake_word_detector.wake_words());
+    
+    // Simulate low energy audio (silence)
+    let silence = vec![0.01f32; 1000];
+    let detected = wake_word_detector.detect(&silence)?;
+    println!("   Low energy audio detected: {}", detected);
+    
+    // Simulate high energy audio (speech-like)
+    let speech = vec![0.5f32; 1000];
+    let detected = wake_word_detector.detect(&speech)?;
+    println!("   High energy audio detected: {}", detected);
+    println!("   Note: This is a simple energy-based detector.");
+    println!("         For production, use OpenWakeWord or Porcupine.");
+
+    // 4. LLM interaction
     println!("\n3. Processing user input with LLM...");
-    let llm = MockLlmProvider::new();
+    
+    // Try Ollama first, fall back to Mock if not available
+    let llm: Box<dyn LlmProvider> = {
+        let ollama = OllamaProvider::new("llama2".to_string());
+        if ollama.is_available() {
+            println!("   Using Ollama LLM (local)");
+            Box::new(ollama)
+        } else {
+            println!("   Ollama not available, using Mock LLM");
+            println!("   (To use Ollama: install from https://ollama.ai and run 'ollama pull llama2')");
+            Box::new(MockLlmProvider::new())
+        }
+    };
+    
     let options = LlmOptions::default();
     let response = llm.complete("What's the weather like today?", &options)?;
     println!("   User: What's the weather like today?");
     println!("   Agent: {}", response.text);
 
-    // 4. Intent generation
-    println!("\n4. Generating intents from user input...");
+    // 5. Intent generation
+    println!("\n5. Generating intents from user input...");
     let generator = IntentGenerator::new();
     
     // Example 1: Query intent (no permission required)
@@ -90,7 +123,7 @@ fn main() -> Result<()> {
     }
 
     // Example 2: Action intent (requires permission)
-    println!("\n5. Demonstrating permission-required intent...");
+    println!("\n6. Demonstrating permission-required intent...");
     let mut params = HashMap::new();
     params.insert("device".to_string(), serde_json::json!("living_room_light"));
     params.insert("action".to_string(), serde_json::json!("on"));
@@ -106,7 +139,7 @@ fn main() -> Result<()> {
     println!("   Requires permission: {}", device_intent.requires_permission);
 
     // 6. Policy enforcement
-    println!("\n6. Testing policy enforcement...");
+    println!("\n7. Testing policy enforcement...");
     let mut policy = PolicyEngine::new(vec!["device".to_string(), "notification".to_string()]);
     
     // Try without permission
@@ -132,7 +165,7 @@ fn main() -> Result<()> {
     }
 
     // 7. Context-aware planning
-    println!("\n7. Context-aware planning...");
+    println!("\n8. Context-aware planning...");
     let planner = Planner::new();
     
     let recent_events = memory.get_recent_events(5)?;
@@ -151,10 +184,11 @@ fn main() -> Result<()> {
     println!("\nKey Takeaways:");
     println!("1. Agent core maintains memory (events, habits) in SQLite");
     println!("2. Statistical habit modeling tracks patterns without judgment");
-    println!("3. LLM abstraction allows any provider (local or cloud)");
-    println!("4. Intents are structured JSON - agent never executes directly");
-    println!("5. Policy engine enforces permissions before any action");
-    println!("6. Planner provides context-aware reasoning");
+    println!("3. Wake word detection enables voice-first interaction");
+    println!("4. LLM abstraction allows any provider (local Ollama or cloud)");
+    println!("5. Intents are structured JSON - agent never executes directly");
+    println!("6. Policy engine enforces permissions before any action");
+    println!("7. Planner provides context-aware reasoning");
     println!("\nNext step: Send intent JSON to Go device agent for execution");
 
     Ok(())

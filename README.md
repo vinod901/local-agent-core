@@ -83,10 +83,39 @@ The agent prepares, suggests, summarizes — the human authorizes.
 - Rust 1.70+ (`cargo`)
 - Go 1.21+ (`go`)
 - Docker & docker-compose (optional)
+- [Ollama](https://ollama.ai) (optional, for local LLM)
+
+### Using Makefile (Recommended)
+
+The project includes a comprehensive Makefile for easy development:
+
+```bash
+# Show all available commands
+make help
+
+# Install dependencies
+make deps
+
+# Build all components
+make build
+
+# Run tests
+make test
+
+# Run the demo
+make run
+
+# Clean build artifacts
+make clean
+```
 
 ### Build Rust Agent Core
 
 ```bash
+# Using Makefile
+make build-rust
+
+# Or directly
 cd rust-agent-core
 cargo build --release
 cargo test
@@ -95,23 +124,50 @@ cargo test
 ### Build Go Device Agent
 
 ```bash
+# Using Makefile
+make build-go
+
+# Or directly
 cd go-device-agent
 go build ./...
 go test ./...
 ```
 
-### Run Device Agent Demo
+### Run Complete Workflow Demo
 
 ```bash
-cd go-device-agent
-go run cmd/agent/main.go
+# Using Makefile
+make run-demo
+
+# Or directly
+cd rust-agent-core
+cargo run --release --example complete_workflow
 ```
 
 ### Using Docker Compose
 
 ```bash
+# Using Makefile
+make docker-up
+
+# Or directly
 docker-compose up --build
 ```
+
+### Setting up Local LLM (Ollama)
+
+For local LLM support:
+
+1. Install Ollama from https://ollama.ai
+2. Pull a model:
+   ```bash
+   ollama pull llama2
+   # or
+   ollama pull mistral
+   ```
+3. Run the demo - it will automatically detect and use Ollama if available
+
+The demo will fall back to a mock LLM if Ollama is not running.
 
 ## 📚 Components
 
@@ -229,10 +285,12 @@ npm test
 - [x] Habit modeling
 - [x] Intent generation
 - [x] Policy engine
-- [ ] Wake word detection (OpenWakeWord/Porcupine)
+- [x] Makefile for easy building and running
+- [x] Wake word detection (simple energy-based implementation)
+- [x] Local LLM integration (Ollama support)
+- [ ] Advanced wake word detection (OpenWakeWord/Porcupine)
 - [ ] Speech-to-text (whisper.cpp integration)
 - [ ] Text-to-speech (Piper TTS integration)
-- [ ] Local LLM integration (llama.cpp)
 - [ ] HTTP API for agent ↔ device communication
 - [ ] Robot control executor (with safety)
 

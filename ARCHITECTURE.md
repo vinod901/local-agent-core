@@ -103,8 +103,8 @@ The cognitive engine that:
 - `planner` - Context-aware reasoning
 - `policy` - Permission enforcement
 - `intent` - Intent generation (JSON output)
-- `llm` - LLM abstraction layer
-- `voice` - Voice I/O interfaces
+- `llm` - LLM abstraction layer (with Ollama support)
+- `voice` - Voice I/O interfaces (with simple wake word detection)
 
 ### Go Device Agents (`go-device-agent/`)
 
@@ -121,12 +121,17 @@ The execution layer that:
 - `executor` - Action executors
 - `cmd/agent` - Main device agent entry point
 
+### Implemented Components
+
+- ✅ Wake word detection (simple energy-based implementation)
+- ✅ Local LLM integration (Ollama via HTTP API)
+- ✅ Makefile for easy development workflow
+
 ### Future Components (To Be Implemented)
 
-- Wake word detection (OpenWakeWord/Porcupine)
+- Advanced wake word detection (OpenWakeWord/Porcupine)
 - Speech-to-text (whisper.cpp integration)
 - Text-to-speech (Piper TTS integration)
-- Local LLM integration (llama.cpp)
 - Robot control executor (with safety constraints)
 
 ## Technology Stack
@@ -137,13 +142,15 @@ The execution layer that:
 
 ### Dependencies
 - **SQLite**: Persistent memory (via rusqlite)
+- **Ollama**: Local LLM support (via HTTP API)
+- **reqwest**: HTTP client for LLM API calls
 - **whisper.cpp**: Speech-to-text (to be integrated)
 - **Piper TTS**: Text-to-speech (to be integrated)
-- **llama.cpp**: Local LLM (to be integrated)
 
 ### Development
 - **Docker**: Containerization
 - **docker-compose**: Multi-service orchestration
+- **Makefile**: Build automation and workflow management
 
 ## Core Principles
 
@@ -171,10 +178,19 @@ The agent prepares, suggests, summarizes — the human authorizes.
 - Rust (1.70+)
 - Go (1.21+)
 - Docker & docker-compose (for orchestration)
+- Ollama (optional, for local LLM support)
 
 ### Building
 
 ```bash
+# Using Makefile (recommended)
+make build
+
+# Or build components individually
+make build-rust
+make build-go
+
+# Or manually
 # Build Rust agent core
 cd rust-agent-core
 cargo build --release
@@ -192,6 +208,10 @@ go run cmd/agent/main.go
 ### Testing
 
 ```bash
+# Using Makefile
+make test
+
+# Or manually
 # Test Rust components
 cd rust-agent-core
 cargo test
@@ -200,6 +220,28 @@ cargo test
 cd go-device-agent
 go test ./...
 ```
+
+### Running the Demo
+
+```bash
+# Using Makefile
+make run
+
+# Or manually
+cd rust-agent-core
+cargo run --release --example complete_workflow
+```
+
+### Local LLM Setup
+
+1. Install Ollama from https://ollama.ai
+2. Pull a model:
+   ```bash
+   ollama pull llama2
+   # or
+   ollama pull mistral
+   ```
+3. The demo will automatically detect and use Ollama if available
 
 ## Usage Example
 

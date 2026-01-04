@@ -22,6 +22,9 @@ rust-agent-core/Cargo.lock
 go-device-agent/device-agent
 go-device-agent/go.sum
 
+# Binary output directory
+bin/
+
 # Test coverage
 coverage/
 .nyc_output/
